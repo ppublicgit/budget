@@ -65,7 +65,7 @@
             </widget>
            </item>
            <item row="7" column="1">
-            <widget class="QSpinBox" name="sb_year_finish">
+            <widget class="QSpinBox" name="sb_year_end">
              <property name="minimum">
               <number>2019</number>
              </property>
@@ -350,6 +350,9 @@
              <property name="minimum">
               <number>2019</number>
              </property>
+             <property name="maximum">
+              <number>2022</number>
+             </property>
             </widget>
            </item>
            <item row="21" column="0">
@@ -393,7 +396,7 @@
             </widget>
            </item>
            <item row="6" column="1">
-            <widget class="QSpinBox" name="sb_month_finish">
+            <widget class="QSpinBox" name="sb_month_end">
              <property name="minimum">
               <number>1</number>
              </property>
@@ -491,13 +494,23 @@
          <property name="currentIndex">
           <number>1</number>
          </property>
+         <widget class="QWidget" name="tab_major">
+          <attribute name="title">
+           <string>Major</string>
+          </attribute>
+          <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <item>
+            <widget class="MplWidget" name="mpl_major" native="true"/>
+           </item>
+          </layout>
+         </widget>
          <widget class="QWidget" name="tab_category">
           <attribute name="title">
            <string>Category</string>
           </attribute>
           <layout class="QHBoxLayout" name="horizontalLayout_4">
            <item>
-            <widget class="MplWidget" name="widget_2" native="true"/>
+            <widget class="MplWidget" name="mpl_category" native="true"/>
            </item>
           </layout>
          </widget>
@@ -507,7 +520,17 @@
           </attribute>
           <layout class="QHBoxLayout" name="horizontalLayout_5">
            <item>
-            <widget class="MplWidget" name="widget" native="true"/>
+            <widget class="MplWidget" name="mpl_tag" native="true"/>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab_frivolous">
+          <attribute name="title">
+           <string>Frivolous</string>
+          </attribute>
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <item>
+            <widget class="MplWidget" name="mpl_frivolous" native="true"/>
            </item>
           </layout>
          </widget>

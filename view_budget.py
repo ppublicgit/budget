@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def get_salary(years):
+def get_salary(years, data_path):
     salary_df = pd.DataFrame(columns=["Date", "Salary"])
     for year in years:
-        fn = glob.glob(os.path.join(os.getcwd(), f"{year}.xlsx"))[0]
+        fn = glob.glob(os.path.join(data_path, f"{year}.xlsx"))[0]
         df = pd.read_excel(fn, sheet_name=None)
         del df["Total"]
         months = df.keys()
@@ -73,9 +73,10 @@ def plot_area(df, grouper, salary_df=None):
 def main():
     years = [2019, 2020]
     dfs = []
-    salary_df = get_salary(years)
+    data_path = "/home/p/Documents/Personal/Budget"
+    salary_df = get_salary(years, data_path)
     for year in years:
-        fn = glob.glob(os.path.join(os.getcwd(), f"{year}.csv"))[0]
+        fn = glob.glob(os.path.join(data_path, f"{year}.csv"))[0]
         dfs.append(pd.read_csv(fn))
 
     df = dfs[0]
@@ -84,6 +85,7 @@ def main():
     df = df.reset_index(drop=True)
     df["Date"] = pd.to_datetime(df["Date"], format="%Y-%m-%d")
     df = group_major(df)
+    breakpoint()
     plot_area(df, "Category", salary_df)
     plot_area(df, "Tag", salary_df)
     plot_area(df, "Major", salary_df)
