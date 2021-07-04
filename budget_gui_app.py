@@ -1,8 +1,6 @@
 import sys
 import os
 import glob
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
 
@@ -10,9 +8,40 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog
 
 from budget_gui_ui import Ui_MainWindow
 import view_budget as vb
+import budget_to_csv as b2c
 
 
-class Plot:
+class PlotLine:
+    def __init__(self, fig, ax):
+        self.fig = fig
+        self.ax = ax
+        self.df = None
+
+    def update(self):
+        """Update matplotlib toolbar memory (such as Home button)."""
+        self.ax.figure.canvas.toolbar.update()
+        self.ax.figure.canvas.fig.tight_layout()
+        self.ax.figure.canvas.draw()
+
+    def make_plot(self, df, salary_df=None):
+        self.ax.clear()
+        expenses_df = df.loc[:, ["Date", "Price"]]
+        expenses_df["Date"] = df["Date"].apply(vb.group_dates)
+        expenses_df = group_df.groupby(["Date"]).agg({"Price": "sum"})
+        retirement_df = df.loc[df["Category"] == "Retirement"]
+        retirement_df["Date"] = retirement_df["Date"].apply(vb.group_dates)
+        retirement_df = retirement_df.groupby(["Date"]).agg({"Price": "sum"})
+        self.ax.plot(salary_df["Date"], salary_df["Salary"])
+
+def debug_trace():
+    '''Set a tracepoint in the Python debugger that works with Qt'''
+    from PyQt5.QtCore import pyqtRemoveInputHook
+
+    from pdb import set_trace
+    pyqtRemoveInputHook()
+    set_trace()
+
+class PlotArea:
     def __init__(self, fig, ax):
         self.fig = fig
         self.ax = ax
@@ -42,12 +71,20 @@ class Plot:
         group_df = df.loc[:, ["Date", "Price", grouper]]
         group_df["Date"] = group_df["Date"].apply(vb.group_dates)
         group_df = group_df.groupby([grouper, "Date"]).agg({"Price": "sum"})
-        group_df.unstack(level=0).plot.area(ax=self.ax)
+        try:
+            group_df.unstack(level=0).plot.area(ax=self.ax)
+        except ValueError as e:
+            print("Negative value found for price, setting to 0")
+            group_df = group_df.unstack(level=0)
+            group_df.loc[group_df[("Price", "Gambling")] < 0, ("Price", "Gambling")] = 0
+            group_df.plot.area(ax=self.ax)
+
         labels = self.ax.legend().get_texts()
         for label in labels:
             label.set_text(label.get_text().split(" ")[1][:-1])
         if salary_df is not None:
             self.ax.plot(salary_df["Date"], salary_df["Salary"])
+        self.ax.grid(True)
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -56,14 +93,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
 
-        self.p_major = Plot(fig=self.mpl_major.canvas.fig,
+        self.p_major = PlotArea(fig=self.mpl_major.canvas.fig,
                             ax=self.mpl_major.canvas.ax1)
-        self.p_category = Plot(fig=self.mpl_category.canvas.fig,
+        self.p_category = PlotArea(fig=self.mpl_category.canvas.fig,
                                ax=self.mpl_category.canvas.ax1)
-        self.p_tag = Plot(fig=self.mpl_tag.canvas.fig,
+        self.p_tag = PlotArea(fig=self.mpl_tag.canvas.fig,
                           ax=self.mpl_tag.canvas.ax1)
-        self.p_frivolous = Plot(fig=self.mpl_frivolous.canvas.fig,
+        self.p_frivolous = PlotArea(fig=self.mpl_frivolous.canvas.fig,
                                 ax=self.mpl_frivolous.canvas.ax1)
+        self.p_savings = PlotLine(fig=self.mpl_savings.canvas.fig,
+                                  ax=self.mpl_savings.canvas.ax1)
 
         self.data_folder = "/home/p/Documents/Personal/Budget/"
         self.categories = []
@@ -106,6 +145,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.get_miscellaneous_chkbox()
         self.cb_health.stateChanged.connect(self.get_health_chkbox)
         self.get_health_chkbox()
+        self.cb_retirement.stateChanged.connect(self.get_retirement_chkbox)
+        self.get_retirement_chkbox()
         self.cb_alcohol.stateChanged.connect(self.get_alcohol_chkbox)
         self.get_alcohol_chkbox()
         self.cb_books.stateChanged.connect(self.get_books_chkbox)
@@ -155,7 +196,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.get_transportation_tag_chkbox()
         self.cb_travel.stateChanged.connect(self.get_travel_chkbox)
         self.get_travel_chkbox()
+        self.cb_retirement_tag.stateChanged.connect(self.get_retirement_tag_chkbox)
+        self.get_retirement_tag_chkbox()
         self.pb_plot.clicked.connect(self.plot)
+        self.pb_update_data.clicked.connect(self.update_data)
 
     def get_data_folder(self):
         fn = QFileDialog.getOpenFileName(None, u"Select File for Folder Path",
@@ -244,6 +288,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if "health" in self.categories:
                 self.categories.remove("health")
+        return
+
+    def get_retirement_chkbox(self):
+        checked = self.cb_health.isChecked()
+        if checked and "retirement" not in self.categories:
+            self.categories.append("retirement")
+        else:
+            if "retirement" in self.categories:
+                self.categories.remove("retirement")
         return
 
     def get_alcohol_chkbox(self):
@@ -462,6 +515,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.tags.remove("travel")
         return
 
+    def get_retirement_tag_chkbox(self):
+        checked = self.cb_health.isChecked()
+        if checked and "retirement" not in self.categories:
+            self.categories.append("retirement")
+        else:
+            if "retirement" in self.categories:
+                self.categories.remove("retirement")
+        return
+
     def get_month_start(self):
         self.month_start = int(self.sb_month_start.value())
         return
@@ -479,7 +541,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return
 
     def plot(self):
-        years = [*range(self.year_start, self.year_end)]
+        if self.year_start < self.year_end:
+            years = [*range(self.year_start, self.year_end+1)]
+        else:
+            years = [self.year_end]
         salary_df = vb.get_salary(years, self.data_folder)
         dfs = []
         for year in years:
@@ -506,6 +571,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.p_frivolous.update()
         return
 
+    def update_data(self):
+        if self.year_start < self.year_end:
+            years = [*range(self.year_start, self.year_end+1)]
+        else:
+            years = [self.year_end]
+        df_year = pd.DataFrame(columns=[
+            "Place", "Date", "Category",
+            "Price", "Description", "Tag"])
+
+        for year in years:
+            f = glob.glob(os.path.join(self.data_folder, f"*{year}.xlsx"))[0]
+            df_year = b2c.import_odf(f, year)
+            df_year.to_csv(os.path.join(self.data_folder, f"{year}.csv"),
+                           index=False)
+        return
 
 def main():
     """Main entry point for Plot RCS app."""

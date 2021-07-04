@@ -3,6 +3,22 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import datetime
+
+MONTHS = {"January": 1,
+          "February": 2,
+          "March": 3,
+          "April": 4,
+          "May": 5,
+          "June": 6,
+          "July": 7,
+          "August": 8,
+          "September": 9,
+          "October": 10,
+          "November": 11,
+          "December": 12
+          }
+
 
 
 def extract_living(df):
@@ -111,9 +127,9 @@ def extract_entertainment(df):
 
     for index, row in df_entertainment.iterrows():
         if row.iloc[4] == "Alocohol":
-            breakpoint()
+            pass#breakpoint()
         if row.iloc[4] == "Photgraphy":
-            breakpoint()
+            pass#breakpoint()
         observation = {
             "Place": row.iloc[0],
             "Date": row.iloc[1],
@@ -189,6 +205,35 @@ def extract_flight_school(df):
     return df
 
 
+def extract_retirement(filename, year):
+    #breakpoint()
+    df_retirement_months = pd.read_excel(filename,
+                                         sheet_name=None,
+                                         usecols=list(range(3)),
+                                         skiprows=38,
+                                         nrows=13,
+                                         engine="openpyxl")
+    del df_retirement_months["Total"]
+    months = df_retirement_months.keys()
+    df_retirement = pd.DataFrame(columns=["Place", "Date",
+                                          "Category", "Price",
+                                          "Description", "Tag"])
+    for month in months:
+        ret_date = datetime.datetime(int(year), MONTHS[month], 1)
+        for ret_account in ["401k", "Roth IRA"]:
+            observation = {
+                "Place": ret_account,
+                "Date": ret_date,
+                "Category": "Retirement",
+                "Price": 0,
+                "Description": f"{ret_account} Retirement Contribution",
+                "Tag": "Retirement"
+            }
+            df_retirement = df_retirement.append(observation, ignore_index=True)
+
+    return df_retirement
+
+
 def fix_month(month, year, date):
     MONTHS = {"January": 1, "February": 2, "March": 3,
               "April": 4, "May": 5, "June": 6,
@@ -212,7 +257,8 @@ def import_odf(filename, year):
     df_months = pd.read_excel(filename,
                               sheet_name=None,
                               usecols=list(range(2, 33)),
-                              nrows=30)
+                              nrows=30,
+                              engine="openpyxl")
     del df_months["Total"]
     months = df_months.keys()
     df_all_months = pd.DataFrame(columns=["Place", "Date",
@@ -232,7 +278,6 @@ def import_odf(filename, year):
         miscellaneous_df = extract_miscellaneous(df)
         health_df = extract_health_and_fitness(df)
         flight_df = extract_flight_school(df)
-
         df_month = df_month.append([living_df,
                                     grocery_df,
                                     transportation_df,
@@ -248,6 +293,8 @@ def import_odf(filename, year):
         )
 
         df_all_months = df_all_months.append(df_month)
+    df_retirement = extract_retirement(filename, year)
+    df_all_months = df_all_months.append(df_retirement)
     return df_all_months.reset_index(drop=True)
 
 
@@ -258,9 +305,9 @@ def main():
             "Price", "Description", "Tag"])
 
     for year in years:
-        f = glob.glob(os.path.join(os.getcwd(), f"*{year}.xlsx"))[0]
-        df_year = import_odf(f, year)
+        f = glob.glob(os.path.join(os.getcwd(), f"../*{year}.xlsx"))[0]
         breakpoint()
+        df_year = import_odf(f, year)
         df_year.to_csv(os.path.join(os.getcwd(), f"{year}.csv"), index=False)
     return
 

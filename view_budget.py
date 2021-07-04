@@ -8,7 +8,7 @@ def get_salary(years, data_path):
     salary_df = pd.DataFrame(columns=["Date", "Salary"])
     for year in years:
         fn = glob.glob(os.path.join(data_path, f"{year}.xlsx"))[0]
-        df = pd.read_excel(fn, sheet_name=None)
+        df = pd.read_excel(fn, sheet_name=None, engine="openpyxl")
         del df["Total"]
         months = df.keys()
         for month in months:
@@ -23,7 +23,10 @@ def get_salary(years, data_path):
 
 
 def group_dates(datetime):
-    datetime = datetime.replace(day=1)
+    try:
+        datetime = datetime.replace(day=1)
+    except:
+        print(datetime)
     return datetime
 
 
@@ -38,7 +41,9 @@ def group_major(df):
                   "Entertainment": "Frivolous",
                   "Transportation": "Essentials",
                   "Miscellaneous": "Miscellaneous",
-                  "Flight": "Frivolous"}
+                  "Flight": "Frivolous",
+                  "Retirement": "Retirement"}
+
     minor_tags = {"Alcohol": "Frivolous",
                   "Electronics": "Essentials",
                   "Home Improvement": "Essentials",
@@ -48,7 +53,11 @@ def group_major(df):
                   "Services": "Essentials",
                   "Travel": "Frivolous",
                   "Frivolous": "Frivolous",
-                  "Essentials": "Essentials"}
+                  "Essentials": "Essentials",
+                  "Retirement": "Retirement",
+                  "Clothing": "Frivolous",
+                  "Books": "Frivolous"}
+
     df["Major"] = df["Category"].apply(lambda x: major_tags[x])
     df.loc[(df.Major == "Miscellaneous"), "Major"] = df.loc[
         (df.Major == "Miscellaneous"), "Tag"]
@@ -65,13 +74,13 @@ def plot_area(df, grouper, salary_df=None):
     for label in labels:
         label.set_text(label.get_text().split(" ")[1][:-1])
     if salary_df is not None:
-        breakpoint()
+        #breakpoint()
         ax.plot(salary_df["Date"], salary_df["Salary"])
     plt.show(block=False)
 
 
 def main():
-    years = [2019, 2020]
+    years = [2019, 2020, 2021]
     dfs = []
     data_path = "/home/p/Documents/Personal/Budget"
     salary_df = get_salary(years, data_path)
